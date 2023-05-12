@@ -20,16 +20,13 @@ import re
 with open(r'calendar_sessions_info.txt', 'r') as f:
     lines = f.readlines()
 clinician = lines[0].strip()
-print(clinician)
-print(type(clinician))
 clin_email = lines[1].strip()
-new_dir = lines[2].strip()
-site_url = lines[3].strip()
-login_url = lines[4].strip()
-prox = lines[5].strip()
+site_url = lines[2].strip()
+login_url = lines[3].strip()
+prox = lines[4].strip()
 proxies={"https":prox}
-tokenfile = lines[6].strip()
-xmlfile = lines[7].strip()
+tokenfile = lines[5].strip()
+xmlfile = lines[6].strip()
 
 ### Part 1: Delete existing appointments
 
