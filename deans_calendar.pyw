@@ -158,12 +158,10 @@ clin_sess_df = clin_sess_df.replace(',', '', regex=True)
 
 clin_sess_df.loc[:, 'Name'] = clin_sess_df['Name'].str.lstrip()
 
-pattern = r'\(Fellow\)'
-filtered_df3.loc[:, 'Name'] = filtered_df3['Name'].str.replace(pattern, '', regex=True)
-filtered_df3.to_csv('data4.csv') ##all clinical sessions
+clin_sess_df.loc[:, 'Name'] = clin_sess_df['Name'].str.replace(r'\(Fellow\)', '', regex=True)
 
 #Add to calendar
-for index, row in filtered_df3.iterrows():
+for index, row in clin_sess_df.iterrows():
     print(row['Location'])
     st = (str(row['Start']))
     stdt = datetime.strptime(st, "%Y-%m-%d %H:%M:%S")
@@ -186,19 +184,15 @@ for index, row in filtered_df3.iterrows():
 
 ### Part 5: Add On Call
 ## Filter for on call
-filtered_df=df.query('Location in ["Registrar On call", "Consultant On Call"] and Session in ["am", "eve"]')
-pattern = r'\(Fellow\)'
-filtered_df_copy = filtered_df.copy()
-filtered_df_copy.loc[:, 'Name'] = filtered_df_copy['Name'].str.replace(pattern, '', regex=True)
-pattern2 = r'\(Pain\)'
-filtered_df_copy2 = filtered_df_copy.copy()
-filtered_df_copy2.loc[:, 'Name'] = filtered_df_copy2['Name'].str.replace(pattern2, '', regex=True)
-filtered_df_copy2.loc[:, 'Oncall2'] = filtered_df_copy2['Location'].str.split().str.get(0)
-filtered_df_copy2.loc[:, 'Name'] = filtered_df_copy2['Oncall2'] + ": " + filtered_df_copy2['Name']
-filtered_df_copy2['Title'] = filtered_df_copy2['Location'] + " " + filtered_df_copy2['Session']
-filtered_df_copy3 = filtered_df_copy2.copy()
-filtered_df_copy3.loc[:, 'Title'] = filtered_df_copy3['Title'].str.replace('am', '- Day', regex=True)
-filtered_df_copy3.loc[:, 'Title'] = filtered_df_copy3['Title'].str.replace('eve', ' - Night', regex=True)
+
+call_df = (
+    df.query('Location in ["Registrar On call", "Consultant On Call"] and Session in ["am", "eve"]')
+    .assign(Name=lambda x: x['Name'].str.replace(r'\(Fellow\)|\(Pain\)', '', regex=True),
+            Oncall2=lambda x: x['Location'].str.split().str.get(0))
+    .assign(Name=lambda x: x['Oncall2'] + ": " + x['Name'],
+            Title=lambda x: x['Location'] + x['Session'].map({'am': '- Day', 'eve': ' - Night'}))
+)
+
 
 
 merged_df = filtered_df_copy3.groupby("TimeSession").agg({"Name": lambda x: ", ".join(sorted(x)),  # Sort names alphabetically
