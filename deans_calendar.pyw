@@ -150,13 +150,13 @@ merged_df = df.groupby("TimeSession").agg({"Name": lambda x: ", ".join(x),
 ### Part 4: Add clinical sessions
 
 #Filter df for clinician
-filtered_df = merged_df.query("Name.str.contains(@clinician) and Location_Type=='Standard' and Location != 'NCD'")
+clin_sess_df = merged_df.query("Name.str.contains(@clinician) and Location_Type=='Standard' and Location != 'NCD'")
 
-filtered_df2 = filtered_df.replace(clinician, ' ', regex=True)
+clin_sess_df = clin_sess_df.replace(clinician, ' ', regex=True)
 
-filtered_df3 = filtered_df2.replace(',', '', regex=True)
+clin_sess_df = clin_sess_df.replace(',', '', regex=True)
 
-filtered_df3.loc[:, 'Name'] = filtered_df3['Name'].str.lstrip()
+clin_sess_df.loc[:, 'Name'] = clin_sess_df['Name'].str.lstrip()
 
 pattern = r'\(Fellow\)'
 filtered_df3.loc[:, 'Name'] = filtered_df3['Name'].str.replace(pattern, '', regex=True)
