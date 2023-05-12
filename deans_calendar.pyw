@@ -73,17 +73,13 @@ username = os.getenv('clwrotamaster')
 
 ##Get token XML
 resp = requests.post(login_url, data ={'username':username, 'password': password}, proxies=proxies, allow_redirects=True)
-with open(tokenfile, 'wb') as file:
-    file.write(resp.content)
+content=resp.content
+root = ET.fromstring(content)
 
-#pull token from XML
-tree1=ET.parse(tokenfile)
-root1=tree1.getroot()
+for token in root.iter('token'):
+        global tok
+        tok = token.text
 
-for token in root1.iter('token'):
-    global tok
-    tok=(token.text)
-print(tok)
 ##generate URL for calendar info
 today=datetime.today()
 date1= today.strftime("%Y-%m-%d") + "&"
