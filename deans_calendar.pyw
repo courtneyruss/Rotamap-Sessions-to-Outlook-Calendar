@@ -91,15 +91,7 @@ date1= today.strftime("%Y-%m-%d") + "&"
 dt2= today + timedelta (weeks = 8)
 date2 = dt2.strftime("%Y-%m-%d")
 
-print(date2)
-url1=site_url
-token=tok + '/'
-url2='person_rota/'
-url3='?from_date=' + str(date1) + 'to_date=' + str(date2)
-
-step1=urljoin(url1, token)
-step2=urljoin(step1, url2)
-finalurl=urljoin(step2, url3)
+finalurl=site_url + tok + '/' + 'person_rota/?from_date=' + str(date1) + 'to_date=' + str(date2)
 
 print(finalurl)
 
