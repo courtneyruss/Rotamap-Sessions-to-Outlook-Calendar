@@ -30,10 +30,6 @@ Courtney Russ
 <br>https://www.linkedin.com/in/courtney-russ/
 <br>crus047@aucklanduni.ac.nz / cr285@students.waikato.ac.nz
 
-## Version History
-* 0.1
-    * Initial Release
-
 ## License
 
 This project is licensed under the GNU General Public License v3.0 - see the LICENSE.md file for details
