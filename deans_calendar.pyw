@@ -11,7 +11,6 @@ from urllib.parse import urljoin
 import os
 import win32com.client
 import time
-import xlsxwriter
 import sys
 import numpy as np
 import re
