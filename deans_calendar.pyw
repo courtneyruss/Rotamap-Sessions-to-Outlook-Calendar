@@ -150,15 +150,9 @@ merged_df = df.groupby("TimeSession").agg({"Name": lambda x: ", ".join(x),
 ### Part 4: Add clinical sessions
 
 #Filter df for clinician
-clin_sess_df = merged_df.query("Name.str.contains(@clinician) and Location_Type=='Standard' and Location != 'NCD'")
-
-clin_sess_df = clin_sess_df.replace(clinician, ' ', regex=True)
-
-clin_sess_df = clin_sess_df.replace(',', '', regex=True)
-
-clin_sess_df.loc[:, 'Name'] = clin_sess_df['Name'].str.lstrip()
-
-clin_sess_df.loc[:, 'Name'] = clin_sess_df['Name'].str.replace(r'\(Fellow\)', '', regex=True)
+clin_sess_df = merged_df.query("Name.str.contains(@clinician) and Location_Type=='Standard' and Location != 'NCD'")\
+    .replace([clinician, ',', r'\(Fellow\)'], [' ', '', ''], regex=True)\
+    .assign(Name=lambda x: x['Name'].str.lstrip())
 
 #Add to calendar
 for index, row in clin_sess_df.iterrows():
