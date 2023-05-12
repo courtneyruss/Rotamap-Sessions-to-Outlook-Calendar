@@ -189,7 +189,7 @@ call_df = (
 
 
 
-merged_df = filtered_df_copy3.groupby("TimeSession").agg({"Name": lambda x: ", ".join(sorted(x)),  # Sort names alphabetically
+agg_call_df = call_df.groupby("TimeSession").agg({"Name": lambda x: ", ".join(sorted(x)),  # Sort names alphabetically
     "Start": "first",
     "Day": "first",
     "Location": lambda x: "".join(x),
@@ -197,12 +197,8 @@ merged_df = filtered_df_copy3.groupby("TimeSession").agg({"Name": lambda x: ", "
     "Location_Type" : "first"}).reset_index()
 
 
-filtered_df2 = merged_df.query('Name.str.contains(@clinician)')
-filtered_df2.to_csv('data3.csv')
-filtered_2 = filtered_df2.copy()
-
-print(filtered_2)
-filtered_2.to_csv('data2.csv')
+call_df = agg_call_df.query('Name.str.contains(@clinician)')
+call_df = call_df.copy()
 
 replace1 = str("Consultant: " + clinician + ",")
 print(replace1)
