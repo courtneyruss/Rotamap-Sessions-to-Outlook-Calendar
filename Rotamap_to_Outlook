@@ -194,18 +194,17 @@ agg_call_df = call_df.groupby("TimeSession").agg({"Name": lambda x: ", ".join(so
 call_df = agg_call_df.query('Name.str.contains(@clinician)')
 call_df = call_df.copy()
 
-replace1 = str("Consultant: " + clinician + ",")
-print(replace1)
-replace2 = str(", Consultant: " + clinician)
-print(replace2)
-replace3 = str("Consultant: " + clinician)
-print(replace3)
-call_df.loc[:, 'Name'] = call_df['Name'].replace(replace1, '', regex=True)
-call_df.loc[:, 'Name'] = call_df['Name'].str.replace(replace2, '', regex=True)
-call_df.loc[:, 'Name'] = call_df['Name'].str.replace(replace3, '', regex=True)
-call_df.loc[:, 'Name'] = call_df['Name'].str.replace('Consultant', 'Fellow', regex=True)
-call_df.loc[:, 'Name'] = call_df['Name'].str.replace(' , ', ', ', regex=True)
+# Define replace strings
+replace1 = f"Consultant: {clinician},"
+replace2 = f", Consultant: {clinician}"
+replace3 = f"Consultant: {clinician}"
 
+# Replace strings in 'Name' column of call_df
+call_df['Name'] = call_df['Name'].str.replace(replace1, '', regex=True)\
+                                 .str.replace(replace2, '', regex=True)\
+                                 .str.replace(replace3, '', regex=True)\
+                                 .str.replace('Consultant', 'Fellow', regex=True)\
+                                 .str.replace(' , ', ', ', regex=True)
 call_df.to_csv('data.csv')
 
 
