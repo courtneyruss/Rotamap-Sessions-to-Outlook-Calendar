@@ -7,21 +7,14 @@ from dateutil import tz
 import pytz
 import requests
 from dateutil.relativedelta import relativedelta, FR
-from urllib.parse import urljoin
 import os
 import win32com.client
 import time
 import sys
-import numpy as np
-import re
-
-
 
 with open(r'calendar_sessions_info.txt', 'r') as f:
     lines = f.readlines()
 clinician = lines[0].strip()
-print(clinician)
-print(type(clinician))
 clin_email = lines[1].strip()
 new_dir = lines[2].strip()
 site_url = lines[3].strip()
@@ -51,56 +44,43 @@ countvar = 1
 while countvar > 0:
     countvar = 0
     for appointment in appointments:
-        print(appointment.Subject)
         if (appointment.Categories == "Green Category" or appointment.Categories == "Orange Category"):
             appointment.Delete()
-            print("Deleted")
             countvar = countvar + 1
-        else:
-            print("Not Deleted")
-    print(countvar)
-
-
 
 ### Part 2: Get data from CLW Rota
 #Get username and password
 password = os.environ.get('clwrotamasterpw')
 username = os.getenv('clwrotamaster')
 
+### Get token 
+resp = requests.post(login_url, data ={'username':username, 'password': password}, proxies=proxies, allow_redirects=True)
+content=resp.content
+root = ET.fromstring(content)
 
-####Get token XML
-##resp = requests.post(login_url, data ={'username':username, 'password': password}, proxies=proxies, allow_redirects=True)
-##content=resp.content
-##root = ET.fromstring(content)
-##
-##for token in root.iter('token'):
-##        global tok
-##        tok = token.text
-tok='060211d9-f510-4a2c-9ad2-ec878b5a24a8'
+for token in root.iter('token'):
+        global tok
+        tok = token.text
 
-##generate URL for calendar info
+## Generate URL for calendar info
 today=datetime.today()
 date1= today.strftime("%Y-%m-%d") + "&"
-dt2= today + timedelta (weeks = 8)
-date2 = dt2.strftime("%Y-%m-%d")
+date2 = (today + timedelta (weeks = 12)).strftime("%Y-%m-%d")
 
 finalurl=site_url + tok + '/' + 'person_rota/?from_date=' + str(date1) + 'to_date=' + str(date2)
 
-print(finalurl)
-
-##get response
+## Get response
 
 response=requests.get(finalurl, proxies=proxies, allow_redirects=True)
 with open(xmlfile, 'wb') as file:
     file.write(response.content)
 
-
-#Parse XML
+## Parse XML
 tree=ET.parse(xmlfile)
 root=tree.getroot()
 dict=[]
 
-#Define variables
+## Define variables
 for item in root.iter('person_rota_item'):
     name=item.find('./person').text
     oncall = item.find('./location').text
@@ -115,10 +95,10 @@ for item in root.iter('person_rota_item'):
     elif (speciality is None) and (title is not None):
         speciality = title.text
     else: speciality = speciality.text
-    if session == 'am':
+    if session == 'am': ##minutes required to fill calendar from 8am to 5pm
         duration = 240
     else: duration = 300
-    timesession= start + session + speciality
+    timesession= start + session + speciality + oncall
     #Put variables into dictionary
     dict.append([name, oncall, loctype, startdt, session, timesession, duration, speciality])
 
@@ -150,7 +130,6 @@ clin_sess_df = merged_df.query("Name.str.contains(@clinician) and Location_Type=
 
 #Add to calendar
 for index, row in clin_sess_df.iterrows():
-    print(row['Location'])
     st = (str(row['Start']))
     stdt = datetime.strptime(st, "%Y-%m-%d %H:%M:%S")
     dt_utc = stdt.replace(tzinfo=pytz.UTC)
@@ -181,8 +160,6 @@ call_df = (
             Title=lambda x: x['Location'] + x['Session'].map({'am': '- Day', 'eve': ' - Night'}))
 )
 
-
-
 agg_call_df = call_df.groupby("TimeSession").agg({"Name": lambda x: ", ".join(sorted(x)),  # Sort names alphabetically
     "Start": "first",
     "Day": "first",
@@ -190,22 +167,26 @@ agg_call_df = call_df.groupby("TimeSession").agg({"Name": lambda x: ", ".join(so
     "Title": "first",
     "Location_Type" : "first"}).reset_index()
 
-
 call_df = agg_call_df.query('Name.str.contains(@clinician)')
 call_df = call_df.copy()
-
-# Define replace strings
+# Remove clinician name from body - define replace strings
 replace1 = f"Consultant: {clinician},"
 replace2 = f", Consultant: {clinician}"
 replace3 = f"Consultant: {clinician}"
 
 # Replace strings in 'Name' column of call_df
-call_df['Name'] = call_df['Name'].str.replace(replace1, '', regex=True)\
-                                 .str.replace(replace2, '', regex=True)\
-                                 .str.replace(replace3, '', regex=True)\
-                                 .str.replace('Consultant', 'Fellow', regex=True)\
-                                 .str.replace(' , ', ', ', regex=True)
-call_df.to_csv('data.csv')
+call_df.loc[:, 'Name'] = call_df['Name'].str.replace(replace1, '', regex=True)\
+                                         .replace(replace2, '', regex=True)\
+                                         .replace(replace3, '', regex=True)\
+                                         .replace('Consultant', 'Fellow', regex=True)\
+                                         .replace(' , ', ', ', regex=True)
+
+call_df.loc[:, 'Name'] = call_df.loc[:, 'Name'].str.replace(replace1, '', regex=True)\
+                                              .replace(replace2, '', regex=True)\
+                                              .replace(replace3, '', regex=True)\
+                                              .replace('Consultant', 'Fellow', regex=True)\
+                                              .replace(' , ', ', ', regex=True)
+
 
 
 ## Add call to calendar
@@ -233,12 +214,11 @@ for index, row in call_df.iterrows():
     else:
         appt.Location = str(row['Name'])
         appt.Subject = "Consultant on Call"
-    print("Added " + str(appt.Subject) + " " + str(appt.Start))
     appt.Save()
        
 ### Part 6: Add Liver Call
-## Filter for liver call
-liver_df = df.query('Location == "Liver On Call" and Name == @clinician and Session == "eve"')
+## Filter for liver call - special oncall
+liver_df = df.query('Location == "Liver On Call" and Name == @clinician and Session == "eve"') 
 
 ## Add liver call to calendar
 for index, row in liver_df.iterrows():
@@ -272,7 +252,7 @@ for index, row in nonclindf.iterrows():
     appt.Start = dt_local
     appt.AllDayEvent = False
     appt.Duration = 30
-    appt.BusyStatus = 0
+    appt.BusyStatus = 0 ## shows as free in free/busy time but makes clear that there is no clinical session
     appt.ReminderSet = False
     appt.Subject = str(row['Location']) + " " + str(row['Session'])
     appt.Body = "From CLW Rota"
