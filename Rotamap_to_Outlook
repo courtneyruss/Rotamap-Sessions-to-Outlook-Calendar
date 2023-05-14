@@ -20,13 +20,16 @@ import re
 with open(r'calendar_sessions_info.txt', 'r') as f:
     lines = f.readlines()
 clinician = lines[0].strip()
+print(clinician)
+print(type(clinician))
 clin_email = lines[1].strip()
-site_url = lines[2].strip()
-login_url = lines[3].strip()
-prox = lines[4].strip()
+new_dir = lines[2].strip()
+site_url = lines[3].strip()
+login_url = lines[4].strip()
+prox = lines[5].strip()
 proxies={"https":prox}
-tokenfile = lines[5].strip()
-xmlfile = lines[6].strip()
+tokenfile = lines[6].strip()
+xmlfile = lines[7].strip()
 
 ### Part 1: Delete existing appointments
 
@@ -59,28 +62,22 @@ while countvar > 0:
 
 
 
-    
-
-
 ### Part 2: Get data from CLW Rota
 #Get username and password
 password = os.environ.get('clwrotamasterpw')
 username = os.getenv('clwrotamaster')
 
 
-##Get token XML
-resp = requests.post(login_url, data ={'username':username, 'password': password}, proxies=proxies, allow_redirects=True)
-with open(tokenfile, 'wb') as file:
-    file.write(resp.content)
+####Get token XML
+##resp = requests.post(login_url, data ={'username':username, 'password': password}, proxies=proxies, allow_redirects=True)
+##content=resp.content
+##root = ET.fromstring(content)
+##
+##for token in root.iter('token'):
+##        global tok
+##        tok = token.text
+tok='060211d9-f510-4a2c-9ad2-ec878b5a24a8'
 
-#pull token from XML
-tree1=ET.parse(tokenfile)
-root1=tree1.getroot()
-
-for token in root1.iter('token'):
-    global tok
-    tok=(token.text)
-print(tok)
 ##generate URL for calendar info
 today=datetime.today()
 date1= today.strftime("%Y-%m-%d") + "&"
@@ -147,20 +144,12 @@ merged_df = df.groupby("TimeSession").agg({"Name": lambda x: ", ".join(x),
 ### Part 4: Add clinical sessions
 
 #Filter df for clinician
-filtered_df = merged_df.query("Name.str.contains(@clinician) and Location_Type=='Standard' and Location != 'NCD'")
-
-filtered_df2 = filtered_df.replace(clinician, ' ', regex=True)
-
-filtered_df3 = filtered_df2.replace(',', '', regex=True)
-
-filtered_df3.loc[:, 'Name'] = filtered_df3['Name'].str.lstrip()
-
-pattern = r'\(Fellow\)'
-filtered_df3.loc[:, 'Name'] = filtered_df3['Name'].str.replace(pattern, '', regex=True)
-filtered_df3.to_csv('data4.csv') ##all clinical sessions
+clin_sess_df = merged_df.query("Name.str.contains(@clinician) and Location_Type=='Standard' and Location != 'NCD'")\
+    .replace([clinician, ',', r'\(Fellow\)'], [' ', '', ''], regex=True)\
+    .assign(Name=lambda x: x['Name'].str.lstrip())
 
 #Add to calendar
-for index, row in filtered_df3.iterrows():
+for index, row in clin_sess_df.iterrows():
     print(row['Location'])
     st = (str(row['Start']))
     stdt = datetime.strptime(st, "%Y-%m-%d %H:%M:%S")
@@ -183,22 +172,18 @@ for index, row in filtered_df3.iterrows():
 
 ### Part 5: Add On Call
 ## Filter for on call
-filtered_df=df.query('Location in ["Registrar On call", "Consultant On Call"] and Session in ["am", "eve"]')
-pattern = r'\(Fellow\)'
-filtered_df_copy = filtered_df.copy()
-filtered_df_copy.loc[:, 'Name'] = filtered_df_copy['Name'].str.replace(pattern, '', regex=True)
-pattern2 = r'\(Pain\)'
-filtered_df_copy2 = filtered_df_copy.copy()
-filtered_df_copy2.loc[:, 'Name'] = filtered_df_copy2['Name'].str.replace(pattern2, '', regex=True)
-filtered_df_copy2.loc[:, 'Oncall2'] = filtered_df_copy2['Location'].str.split().str.get(0)
-filtered_df_copy2.loc[:, 'Name'] = filtered_df_copy2['Oncall2'] + ": " + filtered_df_copy2['Name']
-filtered_df_copy2['Title'] = filtered_df_copy2['Location'] + " " + filtered_df_copy2['Session']
-filtered_df_copy3 = filtered_df_copy2.copy()
-filtered_df_copy3.loc[:, 'Title'] = filtered_df_copy3['Title'].str.replace('am', '- Day', regex=True)
-filtered_df_copy3.loc[:, 'Title'] = filtered_df_copy3['Title'].str.replace('eve', ' - Night', regex=True)
+
+call_df = (
+    df.query('Location in ["Registrar On call", "Consultant On Call"] and Session in ["am", "eve"]')
+    .assign(Name=lambda x: x['Name'].str.replace(r'\(Fellow\)|\(Pain\)', '', regex=True),
+            Oncall2=lambda x: x['Location'].str.split().str.get(0))
+    .assign(Name=lambda x: x['Oncall2'] + ": " + x['Name'],
+            Title=lambda x: x['Location'] + x['Session'].map({'am': '- Day', 'eve': ' - Night'}))
+)
 
 
-merged_df = filtered_df_copy3.groupby("TimeSession").agg({"Name": lambda x: ", ".join(sorted(x)),  # Sort names alphabetically
+
+agg_call_df = call_df.groupby("TimeSession").agg({"Name": lambda x: ", ".join(sorted(x)),  # Sort names alphabetically
     "Start": "first",
     "Day": "first",
     "Location": lambda x: "".join(x),
@@ -206,12 +191,8 @@ merged_df = filtered_df_copy3.groupby("TimeSession").agg({"Name": lambda x: ", "
     "Location_Type" : "first"}).reset_index()
 
 
-filtered_df2 = merged_df.query('Name.str.contains(@clinician)')
-filtered_df2.to_csv('data3.csv')
-filtered_2 = filtered_df2.copy()
-
-print(filtered_2)
-filtered_2.to_csv('data2.csv')
+call_df = agg_call_df.query('Name.str.contains(@clinician)')
+call_df = call_df.copy()
 
 replace1 = str("Consultant: " + clinician + ",")
 print(replace1)
@@ -219,18 +200,17 @@ replace2 = str(", Consultant: " + clinician)
 print(replace2)
 replace3 = str("Consultant: " + clinician)
 print(replace3)
-filtered_2.loc[:, 'Name'] = filtered_2['Name'].replace(replace1, '', regex=True)
-filtered_2.loc[:, 'Name'] = filtered_2['Name'].str.replace(replace2, '', regex=True)
-filtered_2.loc[:, 'Name'] = filtered_2['Name'].str.replace(replace3, '', regex=True)
-filtered_2.loc[:, 'Name'] = filtered_2['Name'].str.replace('Consultant', 'Fellow', regex=True)
-filtered_2.loc[:, 'Name'] = filtered_2['Name'].str.replace(' , ', ', ', regex=True)
+call_df.loc[:, 'Name'] = call_df['Name'].replace(replace1, '', regex=True)
+call_df.loc[:, 'Name'] = call_df['Name'].str.replace(replace2, '', regex=True)
+call_df.loc[:, 'Name'] = call_df['Name'].str.replace(replace3, '', regex=True)
+call_df.loc[:, 'Name'] = call_df['Name'].str.replace('Consultant', 'Fellow', regex=True)
+call_df.loc[:, 'Name'] = call_df['Name'].str.replace(' , ', ', ', regex=True)
 
-print(filtered_2)
-filtered_2.to_csv('data.csv')
+call_df.to_csv('data.csv')
 
 
 ## Add call to calendar
-for index, row in filtered_2.iterrows():
+for index, row in call_df.iterrows():
     st = (str(row['Start']))
     stdt = datetime.strptime(st, "%Y-%m-%d %H:%M:%S")
     dt_utc = stdt.replace(tzinfo=pytz.UTC)
@@ -300,6 +280,3 @@ for index, row in nonclindf.iterrows():
     appt.Categories = "Orange Category"
     appt.Save()
 
-
-
-print('Done')
