@@ -62,23 +62,21 @@ while countvar > 0:
 
 
 
-    
-
-
 ### Part 2: Get data from CLW Rota
 #Get username and password
 password = os.environ.get('clwrotamasterpw')
 username = os.getenv('clwrotamaster')
 
 
-##Get token XML
-resp = requests.post(login_url, data ={'username':username, 'password': password}, proxies=proxies, allow_redirects=True)
-content=resp.content
-root = ET.fromstring(content)
-
-for token in root.iter('token'):
-        global tok
-        tok = token.text
+####Get token XML
+##resp = requests.post(login_url, data ={'username':username, 'password': password}, proxies=proxies, allow_redirects=True)
+##content=resp.content
+##root = ET.fromstring(content)
+##
+##for token in root.iter('token'):
+##        global tok
+##        tok = token.text
+tok='060211d9-f510-4a2c-9ad2-ec878b5a24a8'
 
 ##generate URL for calendar info
 today=datetime.today()
@@ -202,18 +200,17 @@ replace2 = str(", Consultant: " + clinician)
 print(replace2)
 replace3 = str("Consultant: " + clinician)
 print(replace3)
-filtered_2.loc[:, 'Name'] = filtered_2['Name'].replace(replace1, '', regex=True)
-filtered_2.loc[:, 'Name'] = filtered_2['Name'].str.replace(replace2, '', regex=True)
-filtered_2.loc[:, 'Name'] = filtered_2['Name'].str.replace(replace3, '', regex=True)
-filtered_2.loc[:, 'Name'] = filtered_2['Name'].str.replace('Consultant', 'Fellow', regex=True)
-filtered_2.loc[:, 'Name'] = filtered_2['Name'].str.replace(' , ', ', ', regex=True)
+call_df.loc[:, 'Name'] = call_df['Name'].replace(replace1, '', regex=True)
+call_df.loc[:, 'Name'] = call_df['Name'].str.replace(replace2, '', regex=True)
+call_df.loc[:, 'Name'] = call_df['Name'].str.replace(replace3, '', regex=True)
+call_df.loc[:, 'Name'] = call_df['Name'].str.replace('Consultant', 'Fellow', regex=True)
+call_df.loc[:, 'Name'] = call_df['Name'].str.replace(' , ', ', ', regex=True)
 
-print(filtered_2)
-filtered_2.to_csv('data.csv')
+call_df.to_csv('data.csv')
 
 
 ## Add call to calendar
-for index, row in filtered_2.iterrows():
+for index, row in call_df.iterrows():
     st = (str(row['Start']))
     stdt = datetime.strptime(st, "%Y-%m-%d %H:%M:%S")
     dt_utc = stdt.replace(tzinfo=pytz.UTC)
@@ -282,7 +279,3 @@ for index, row in nonclindf.iterrows():
     appt.Body = "From CLW Rota"
     appt.Categories = "Orange Category"
     appt.Save()
-
-
-
-print('Done')
